@@ -340,7 +340,7 @@ body {{
 </div>
 
 <div class="footer">
-    Secure WebRTC Signaling Core • Flask + WebSocket Engine
+    Secure Call Signaling Core • Advanced Encryption + WebSocket Engine
 </div>
 
 </body>
