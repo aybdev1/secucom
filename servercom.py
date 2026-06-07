@@ -6,23 +6,31 @@ import threading
 from flask import Flask, request
 from flask_sock import Sock
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s", datefmt="%H:%M:%S")
-log = logging.getLogger("signaling")
+# -------------------------
+# LOGGING
+# -------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(message)s",
+    datefmt="%H:%M:%S"
+)
+log = logging.getLogger("secucom")
 
+# -------------------------
+# APP INIT
+# -------------------------
 app = Flask(__name__)
 
-# ✅ FIXED: remove ping_timeout (NOT supported in your flask-sock version)
+# IMPORTANT: flask-sock safe config (NO ping_timeout!)
 app.config["SOCK_SERVER_OPTIONS"] = {
     "ping_interval": 20
 }
 
 sock = Sock(app)
 
-
 # -------------------------
-# CLIENT MODEL
+# CLIENT STORAGE
 # -------------------------
-
 class Client:
     __slots__ = ("id", "ws", "lock")
 
@@ -39,7 +47,6 @@ peers_lock = threading.Lock()
 # -------------------------
 # SAFE SEND
 # -------------------------
-
 def _send(client, obj):
     try:
         with client.lock:
@@ -59,7 +66,6 @@ def _send_raw(ws, obj):
 # -------------------------
 # REGISTER
 # -------------------------
-
 def register(client_id, ws):
     if not client_id:
         return None
@@ -84,7 +90,6 @@ def register(client_id, ws):
 # -------------------------
 # UNREGISTER
 # -------------------------
-
 def unregister(client):
     if not client:
         return
@@ -98,7 +103,6 @@ def unregister(client):
 # -------------------------
 # RELAY
 # -------------------------
-
 def relay(target_id, message):
     with peers_lock:
         target = peers.get(target_id)
@@ -110,9 +114,8 @@ def relay(target_id, message):
 
 
 # -------------------------
-# WEBSOCKET ROUTE
+# WEBSOCKET
 # -------------------------
-
 @sock.route("/ws")
 def ws_handler(ws):
 
@@ -156,219 +159,170 @@ def ws_handler(ws):
 
 
 # -------------------------
-# DASHBOARD (CLEAN UI)
+# DASHBOARD UI
 # -------------------------
-
 @app.route("/")
 def index():
     with peers_lock:
         ids = sorted(peers.keys())
 
-    peer_rows = "".join(
-        f"""
+    # show max 5 users (masked)
+    display = ids[:5]
+
+    peer_html = ""
+    for cid in display:
+        short = cid[:6] + "..." if len(cid) > 6 else cid
+        peer_html += f"""
         <div class="peer">
-            <div class="dot"></div>
-            <div class="peer-id">{cid}</div>
-            <div class="status">ACTIVE</div>
+            <div class="avatar"></div>
+            <div class="peer-id">{short}</div>
+            <div class="tag">ONLINE</div>
         </div>
         """
-        for cid in ids
-    ) or """
-        <div class="empty">No active secure sessions</div>
-    """
+
+    if not peer_html:
+        peer_html = "<div class='empty'>No active secure sessions</div>"
 
     ws_url = f"wss://{request.host}/ws"
 
     return f"""
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SecuCom Enterprise Security Console</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SecuCom Secure Control Center</title>
 
 <style>
 
-:root {{
-    --bg: #070a0f;
-    --panel: #0e1622;
-    --panel2: #0b121b;
-    --border: #1f2b3a;
-    --text: #e6edf3;
-    --muted: #8aa4b7;
-    --accent: #00ffc8;
-    --danger: #ff4d4d;
-    --ok: #00ff88;
-    --blue: #5c9dff;
-}}
-
-* {{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto;
-}}
-
 body {{
-    background: radial-gradient(circle at top, #0f1b2a, var(--bg));
-    color: var(--text);
-    min-height: 100vh;
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto;
+    background: radial-gradient(circle at top, #0b1220, #05070c);
+    color: #e6edf3;
 }}
 
-/* ================= LOADING OVERLAY ================= */
-
-#loading {{
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(circle at center, #0a1320, #05070b);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-}}
-
-.loader {{
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    border: 3px solid rgba(0,255,200,0.15);
-    border-top: 3px solid var(--accent);
-    animation: spin 1s linear infinite;
-}}
-
-@keyframes spin {{
-    100% {{ transform: rotate(360deg); }}
-}}
-
-.loading-title {{
-    margin-top: 18px;
-    color: var(--accent);
-    font-size: 16px;
-    letter-spacing: 2px;
-    font-weight: 600;
-}}
-
-.loading-text {{
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--muted);
-    text-align: center;
-    max-width: 420px;
-    line-height: 1.5;
-}}
-
-.loading-steps {{
-    margin-top: 20px;
-    font-size: 12px;
-    color: #7fa6c4;
-    animation: fade 1.8s infinite;
-}}
-
-@keyframes fade {{
-    0% {{ opacity: 0.2; }}
-    50% {{ opacity: 1; }}
-    100% {{ opacity: 0.2; }}
-}}
-
-/* ================= HEADER ================= */
-
+/* HEADER */
 .header {{
-    padding: 28px 30px;
+    padding: 18px 22px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: #0b1220;
+    border-bottom: 1px solid #1f2a3a;
 }}
 
 .brand {{
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
-    color: var(--accent);
+    color: #00ffc8;
+    letter-spacing: 1px;
 }}
 
-.badge {{
+.status {{
     font-size: 11px;
-    padding: 6px 10px;
+    color: #00ff88;
+    padding: 5px 10px;
+    border: 1px solid #00ff88;
     border-radius: 999px;
-    border: 1px solid rgba(0,255,200,0.3);
-    background: rgba(0,255,200,0.08);
-    color: var(--accent);
+    background: rgba(0,255,136,0.08);
 }}
 
-/* ================= GRID ================= */
-
+/* GRID */
 .container {{
-    padding: 0 30px 30px;
     display: grid;
-    grid-template-columns: 1.3fr 1fr;
-    gap: 18px;
-}}
-
-.card {{
-    background: linear-gradient(180deg, var(--panel), var(--panel2));
-    border: 1px solid var(--border);
-    border-radius: 14px;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
     padding: 18px;
 }}
 
+.card {{
+    background: linear-gradient(180deg, #0e1622, #0a111a);
+    border: 1px solid #1f2a3a;
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}}
+
 .title {{
-    font-size: 12px;
+    font-size: 11px;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--muted);
+    color: #7fa6c4;
     margin-bottom: 10px;
 }}
 
 .ws {{
     font-family: monospace;
-    color: var(--blue);
+    color: #5ca9ff;
+    font-size: 12px;
     word-break: break-all;
-    font-size: 13px;
 }}
 
-/* ================= PEERS ================= */
-
+/* PEERS */
 .peer {{
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 10px;
     margin-top: 8px;
-    background: #0b141f;
-    border: 1px solid var(--border);
+    background: #0a111a;
+    border: 1px solid #1f2a3a;
     border-radius: 10px;
+    transition: 0.2s;
 }}
 
-.dot {{
-    width: 9px;
-    height: 9px;
-    background: var(--ok);
+.peer:hover {{
+    transform: scale(1.01);
+    border-color: #00ffc8;
+}}
+
+.avatar {{
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
+    background: #00ff88;
     margin-right: 10px;
+    box-shadow: 0 0 10px #00ff88;
 }}
 
 .peer-id {{
     flex: 1;
-    margin-left: 10px;
+    font-family: monospace;
+    color: #e6edf3;
 }}
 
-.status {{
+.tag {{
     font-size: 10px;
-    color: var(--ok);
+    color: #00ff88;
     font-weight: 600;
 }}
 
 .empty {{
-    text-align: center;
-    color: var(--muted);
-    padding: 18px;
-}}
-
-.footer {{
+    color: #7a8a99;
     text-align: center;
     padding: 20px;
+    font-size: 13px;
+}}
+
+/* FOOTER */
+.footer {{
+    text-align: center;
+    padding: 18px;
     font-size: 11px;
-    color: var(--muted);
+    color: #60748a;
+    border-top: 1px solid #1f2a3a;
+    margin-top: 10px;
+}}
+
+.glow {{
+    animation: glow 2s infinite;
+}}
+
+@keyframes glow {{
+    0% {{ opacity: 0.5; }}
+    50% {{ opacity: 1; }}
+    100% {{ opacity: 0.5; }}
 }}
 
 </style>
@@ -376,83 +330,46 @@ body {{
 
 <body>
 
-<!-- ================= LOADING SCREEN ================= -->
-<div id="loading">
-    <div class="loader"></div>
-
-    <div class="loading-title">SecuCom Secure Channel Initialization</div>
-
-    <div class="loading-text">
-        Establishing encrypted communication layer using enterprise-grade security protocols.
-        This system simulates advanced secure communication principles including:
-        secure key exchange, session isolation, encrypted signaling, and identity verification.
-    </div>
-
-    <div class="loading-steps" id="steps">
-        Initializing cryptographic runtime...
-    </div>
-</div>
-
-<!-- ================= HEADER ================= -->
 <div class="header">
-    <div class="brand">SecuCom Enterprise Security Console</div>
-    <div class="badge">ZERO TRUST ARCHITECTURE</div>
+    <div class="brand">SECUCOM CONTROL CENTER</div>
+    <div class="status glow">ENCRYPTED SIGNAL ACTIVE</div>
 </div>
 
-<!-- ================= MAIN ================= -->
 <div class="container">
 
     <div class="card">
-        <div class="title">WebSocket Secure Endpoint</div>
+        <div class="title">WebSocket Endpoint</div>
         <div class="ws">{ws_url}</div>
     </div>
 
     <div class="card">
         <div class="title">System Status</div>
-        <div style="color: var(--ok); font-size: 13px;">● All systems operational</div>
-        <div style="color: var(--muted); font-size: 12px; margin-top: 6px;">
-            Encryption layer active • Signaling relay online • Peer routing enabled
+        <div style="color:#00ff88;font-size:13px;">● Relay Engine Online</div>
+        <div style="color:#7fa6c4;font-size:12px;margin-top:6px;">
+            WebRTC signaling ready • Peer routing enabled • Session tracking active
         </div>
     </div>
 
     <div class="card">
-        <div class="title">Active Secure Sessions</div>
-        {peer_rows}
+        <div class="title">Active Users (max 5)</div>
+        {peer_html}
+    </div>
+
+    <div class="card">
+        <div class="title">Security Layer</div>
+        <div style="font-size:12px;color:#7fa6c4;line-height:1.5">
+            • Ephemeral session routing<br>
+            • Identity-based peer mapping<br>
+            • WebSocket encrypted transport layer simulation<br>
+            • Zero trust communication model
+        </div>
     </div>
 
 </div>
 
 <div class="footer">
-    Enterprise Secure Communication Layer • WebRTC Signaling • Identity-Aware Routing
+    SecuCom • Secure Communication Infrastructure • WebRTC Signaling Core
 </div>
-
-<script>
-
-const steps = [
-"Initializing secure runtime environment...",
-"Establishing cryptographic session isolation...",
-"Loading secure signaling relay engine...",
-"Applying zero-trust verification model...",
-"Preparing encrypted peer routing layer...",
-"Secure communication channel ready"
-];
-
-let i = 0;
-const el = document.getElementById("steps");
-
-const interval = setInterval(() => {{
-    el.innerText = steps[i];
-    i++;
-
-    if (i >= steps.length) {{
-        clearInterval(interval);
-        setTimeout(() => {{
-            document.getElementById("loading").style.display = "none";
-        }}, 600);
-    }}
-}}, 800);
-
-</script>
 
 </body>
 </html>
@@ -460,10 +377,9 @@ const interval = setInterval(() => {{
 
 
 # -------------------------
-# MAIN (RAILWAY READY)
+# RUN (RAILWAY / RENDER SAFE)
 # -------------------------
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    log.info("starting on 0.0.0.0:%s", port)
+    log.info("running on 0.0.0.0:%s", port)
     app.run(host="0.0.0.0", port=port, threaded=True)
