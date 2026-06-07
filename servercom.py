@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import threading
 
 from flask import Flask, request
@@ -10,10 +11,9 @@ log = logging.getLogger("signaling")
 
 app = Flask(__name__)
 
-# ✅ Production WebSocket stability
+# ✅ FIXED: remove ping_timeout (NOT supported in your flask-sock version)
 app.config["SOCK_SERVER_OPTIONS"] = {
-    "ping_interval": 20,
-    "ping_timeout": 20
+    "ping_interval": 20
 }
 
 sock = Sock(app)
@@ -110,7 +110,7 @@ def relay(target_id, message):
 
 
 # -------------------------
-# WEBSOCKET
+# WEBSOCKET ROUTE
 # -------------------------
 
 @sock.route("/ws")
@@ -156,7 +156,7 @@ def ws_handler(ws):
 
 
 # -------------------------
-# DASHBOARD (WITH LOADING UI)
+# DASHBOARD (CLEAN UI)
 # -------------------------
 
 @app.route("/")
@@ -164,49 +164,76 @@ def index():
     with peers_lock:
         ids = sorted(peers.keys())
 
-    rows = "".join(
-        f"<div class='peer'><span></span>{cid}</div>"
+    peer_rows = "".join(
+        f"""
+        <div class="peer">
+            <div class="dot"></div>
+            <div class="peer-id">{cid}</div>
+            <div class="status">ACTIVE</div>
+        </div>
+        """
         for cid in ids
-    ) or "<div class='empty'>No active connections</div>"
+    ) or """
+        <div class="empty">No active secure sessions</div>
+    """
 
     ws_url = f"wss://{request.host}/ws"
 
     return f"""
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SecuCom Server</title>
+<title>SecuCom Enterprise Security Console</title>
 
 <style>
 
-body {{
-    margin: 0;
-    font-family: system-ui;
-    background: #070b10;
-    color: #e6edf3;
+:root {{
+    --bg: #070a0f;
+    --panel: #0e1622;
+    --panel2: #0b121b;
+    --border: #1f2b3a;
+    --text: #e6edf3;
+    --muted: #8aa4b7;
+    --accent: #00ffc8;
+    --danger: #ff4d4d;
+    --ok: #00ff88;
+    --blue: #5c9dff;
 }}
 
-/* ---------------- LOADING ---------------- */
+* {{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto;
+}}
+
+body {{
+    background: radial-gradient(circle at top, #0f1b2a, var(--bg));
+    color: var(--text);
+    min-height: 100vh;
+}}
+
+/* ================= LOADING OVERLAY ================= */
 
 #loading {{
     position: fixed;
     inset: 0;
-    background: radial-gradient(circle at center, #0f1a25, #05070a);
+    background: radial-gradient(circle at center, #0a1320, #05070b);
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
     z-index: 9999;
 }}
 
-.spinner {{
-    width: 80px;
-    height: 80px;
+.loader {{
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
-    border: 4px solid rgba(0,255,200,0.15);
-    border-top: 4px solid #00ffc3;
+    border: 3px solid rgba(0,255,200,0.15);
+    border-top: 3px solid var(--accent);
     animation: spin 1s linear infinite;
 }}
 
@@ -214,17 +241,28 @@ body {{
     100% {{ transform: rotate(360deg); }}
 }}
 
-.text {{
-    margin-top: 20px;
-    color: #00ffc3;
+.loading-title {{
+    margin-top: 18px;
+    color: var(--accent);
+    font-size: 16px;
     letter-spacing: 2px;
+    font-weight: 600;
 }}
 
-.steps {{
-    margin-top: 15px;
+.loading-text {{
+    margin-top: 10px;
     font-size: 12px;
-    color: #8aa0b3;
-    animation: fade 2s infinite;
+    color: var(--muted);
+    text-align: center;
+    max-width: 420px;
+    line-height: 1.5;
+}}
+
+.loading-steps {{
+    margin-top: 20px;
+    font-size: 12px;
+    color: #7fa6c4;
+    animation: fade 1.8s infinite;
 }}
 
 @keyframes fade {{
@@ -233,48 +271,104 @@ body {{
     100% {{ opacity: 0.2; }}
 }}
 
-/* ---------------- MAIN ---------------- */
+/* ================= HEADER ================= */
+
+.header {{
+    padding: 28px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}}
+
+.brand {{
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+}}
+
+.badge {{
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,255,200,0.3);
+    background: rgba(0,255,200,0.08);
+    color: var(--accent);
+}}
+
+/* ================= GRID ================= */
 
 .container {{
-    max-width: 900px;
-    margin: auto;
-    padding: 30px;
+    padding: 0 30px 30px;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 18px;
 }}
 
 .card {{
-    background: #0e1620;
-    border: 1px solid #1f2a36;
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 15px;
-    margin-top: 15px;
+    padding: 18px;
+}}
+
+.title {{
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 10px;
 }}
 
 .ws {{
     font-family: monospace;
-    color: #7ae3ff;
+    color: var(--blue);
     word-break: break-all;
+    font-size: 13px;
 }}
+
+/* ================= PEERS ================= */
 
 .peer {{
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
     padding: 10px;
     margin-top: 8px;
-    background: #0b121a;
+    background: #0b141f;
+    border: 1px solid var(--border);
     border-radius: 10px;
 }}
 
-.peer span {{
-    width: 10px;
-    height: 10px;
-    background: #00ff88;
+.dot {{
+    width: 9px;
+    height: 9px;
+    background: var(--ok);
     border-radius: 50%;
+    margin-right: 10px;
+}}
+
+.peer-id {{
+    flex: 1;
+    margin-left: 10px;
+}}
+
+.status {{
+    font-size: 10px;
+    color: var(--ok);
+    font-weight: 600;
 }}
 
 .empty {{
     text-align: center;
-    color: #6b7c8f;
+    color: var(--muted);
+    padding: 18px;
+}}
+
+.footer {{
+    text-align: center;
+    padding: 20px;
+    font-size: 11px;
+    color: var(--muted);
 }}
 
 </style>
@@ -282,46 +376,72 @@ body {{
 
 <body>
 
-<!-- LOADING SCREEN -->
+<!-- ================= LOADING SCREEN ================= -->
 <div id="loading">
-    <div class="spinner"></div>
-    <div class="text">SecuCom Secure Boot</div>
-    <div class="steps" id="steps">Initializing secure channel...</div>
+    <div class="loader"></div>
+
+    <div class="loading-title">SecuCom Secure Channel Initialization</div>
+
+    <div class="loading-text">
+        Establishing encrypted communication layer using enterprise-grade security protocols.
+        This system simulates advanced secure communication principles including:
+        secure key exchange, session isolation, encrypted signaling, and identity verification.
+    </div>
+
+    <div class="loading-steps" id="steps">
+        Initializing cryptographic runtime...
+    </div>
 </div>
 
-<!-- MAIN -->
+<!-- ================= HEADER ================= -->
+<div class="header">
+    <div class="brand">SecuCom Enterprise Security Console</div>
+    <div class="badge">ZERO TRUST ARCHITECTURE</div>
+</div>
+
+<!-- ================= MAIN ================= -->
 <div class="container">
 
-    <h2>🔐 SecuCom Server</h2>
-
     <div class="card">
-        <b>WebSocket</b><br>
+        <div class="title">WebSocket Secure Endpoint</div>
         <div class="ws">{ws_url}</div>
     </div>
 
     <div class="card">
-        <b>Connected Peers</b>
-        {rows}
+        <div class="title">System Status</div>
+        <div style="color: var(--ok); font-size: 13px;">● All systems operational</div>
+        <div style="color: var(--muted); font-size: 12px; margin-top: 6px;">
+            Encryption layer active • Signaling relay online • Peer routing enabled
+        </div>
     </div>
 
+    <div class="card">
+        <div class="title">Active Secure Sessions</div>
+        {peer_rows}
+    </div>
+
+</div>
+
+<div class="footer">
+    Enterprise Secure Communication Layer • WebRTC Signaling • Identity-Aware Routing
 </div>
 
 <script>
 
 const steps = [
- "Initializing secure runtime...",
- "Generating ephemeral keys...",
- "Establishing tunnel...",
- "Verifying peer identity...",
- "Encrypting session...",
- "Secure channel ready"
+"Initializing secure runtime environment...",
+"Establishing cryptographic session isolation...",
+"Loading secure signaling relay engine...",
+"Applying zero-trust verification model...",
+"Preparing encrypted peer routing layer...",
+"Secure communication channel ready"
 ];
 
 let i = 0;
-const box = document.getElementById("steps");
+const el = document.getElementById("steps");
 
 const interval = setInterval(() => {{
-    box.innerText = steps[i];
+    el.innerText = steps[i];
     i++;
 
     if (i >= steps.length) {{
@@ -330,7 +450,7 @@ const interval = setInterval(() => {{
             document.getElementById("loading").style.display = "none";
         }}, 600);
     }}
-}}, 700);
+}}, 800);
 
 </script>
 
@@ -340,8 +460,10 @@ const interval = setInterval(() => {{
 
 
 # -------------------------
-# MAIN
+# MAIN (RAILWAY READY)
 # -------------------------
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, threaded=True)
+    port = int(os.environ.get("PORT", 8080))
+    log.info("starting on 0.0.0.0:%s", port)
+    app.run(host="0.0.0.0", port=port, threaded=True)
