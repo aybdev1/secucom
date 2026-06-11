@@ -1,4 +1,4 @@
-Politique de confidentialité – MobileGuard
+🔐 Politique de confidentialité – MobileGuard
 
 Dernière mise à jour : 10 juin 2026
 
@@ -9,7 +9,7 @@ MobileGuard respecte votre vie privée et s'engage à protéger vos données per
 En utilisant MobileGuard, vous acceptez les pratiques décrites dans cette politique.
 
 2. Informations collectées
-Informations réseau et de sécurité
+🔎 Informations réseau et de sécurité
 
 MobileGuard peut analyser localement les informations suivantes afin de fournir ses fonctionnalités de sécurité :
 
@@ -19,7 +19,7 @@ Requêtes DNS
 Informations sur les appareils connectés au réseau local
 Ports réseau détectés
 Événements de sécurité et alertes
-Informations techniques
+📱 Informations techniques
 
 L'application peut collecter :
 
@@ -43,7 +43,20 @@ MobileGuard privilégie le traitement local des données sur votre appareil.
 
 Les analyses de sécurité, la détection des menaces et le traitement des informations réseau sont effectués localement lorsque cela est possible.
 
-5. Partage des données
+5. 🔍 Analyse et traitement des données (SECTION AJOUTÉE POUR GOOGLE PLAY)
+
+MobileGuard effectue une analyse automatisée des données réseau et système afin de détecter des comportements suspects.
+
+Cette analyse peut inclure :
+
+Classification des protocoles réseau (TCP, UDP, ICMP)
+Détection de scans réseau et comportements anormaux
+Analyse des requêtes DNS et domaines visités
+Identification de connexions suspectes ou malveillantes
+
+Ces analyses sont effectuées principalement sur l’appareil (on-device processing) et ne sont pas utilisées à des fins publicitaires.
+
+6. Partage des données
 
 MobileGuard ne vend pas les données personnelles des utilisateurs.
 
@@ -51,7 +64,7 @@ Les données ne sont pas partagées avec des tiers à des fins publicitaires.
 
 Certaines informations peuvent être transmises à des services de réputation ou de renseignement sur les menaces uniquement lorsque cela est nécessaire pour vérifier la sécurité d'une adresse IP, d'un domaine ou d'un indicateur de compromission.
 
-6. Service VPN local
+7. Service VPN local
 
 MobileGuard peut utiliser l'API VPN d'Android afin d'analyser et de protéger le trafic réseau sur l'appareil.
 
@@ -65,23 +78,23 @@ Fournir des statistiques de sécurité
 
 MobileGuard n'utilise pas le VPN pour collecter ou vendre vos données personnelles.
 
-7. Conservation des données
+8. Conservation des données
 
 Les journaux et événements de sécurité peuvent être conservés localement sur votre appareil jusqu'à leur suppression par l'utilisateur.
 
 Les données sont conservées uniquement pendant la durée nécessaire au fonctionnement des fonctionnalités de sécurité.
 
-8. Sécurité des données
+9. Sécurité des données
 
 Nous mettons en œuvre des mesures de sécurité raisonnables afin de protéger les informations traitées par l'application contre l'accès non autorisé, la modification ou la divulgation.
 
-9. Enfants
+10. Enfants
 
 MobileGuard n'est pas destiné aux enfants de moins de 13 ans.
 
 Nous ne collectons pas sciemment d'informations personnelles auprès d'enfants de moins de 13 ans.
 
-10. Vos droits
+11. Vos droits
 
 Selon votre juridiction, vous pouvez disposer des droits suivants :
 
@@ -92,16 +105,8 @@ Limiter certains traitements de données
 
 Vous pouvez également désinstaller l'application à tout moment.
 
-11. Modifications de cette politique
+12. Modifications de cette politique
 
 Nous pouvons mettre à jour cette politique de confidentialité de temps à autre.
 
 Toute modification importante sera publiée dans l'application ou sur la page officielle de l'application.
-
-12. Contact
-
-Pour toute question concernant cette politique de confidentialité, vous pouvez nous contacter à :
-
-Email : contact@mobileguard-app.com
-
-Développeur : MobileGuard
